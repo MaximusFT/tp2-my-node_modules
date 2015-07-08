@@ -21,7 +21,8 @@ function MenuItem(options) {
         name: null,
         title: null,
         link: null,
-        roles: null
+        roles: null,
+        orderId: null
     }, options);
     options.name = options.name || (options.link ? options.link.replace('/', '_') : undefined) || options.title;
     this.id = options.id;
@@ -32,6 +33,7 @@ function MenuItem(options) {
     this.userGroups = options.userGroups;
     this.icon = options.icon;
     this.submenus = options.submenus || [];
+    this.orderId = options.orderId;
 }
 
 function mapDoStrip(v) {
@@ -47,7 +49,8 @@ MenuItem.prototype.strip = function() {
         roles: this.roles,
         userGroups: this.userGroups,
         icon: this.icon,
-        submenus: this.submenus.map(mapDoStrip)
+        submenus: this.submenus.map(mapDoStrip),
+        orderId: this.orderId
     };
 };
 
@@ -64,7 +67,8 @@ MenuItem.prototype.props = function() {
         link: this.link,
         icon: this.icon,
         roles: this.roles,
-        userGroups: this.userGroups
+        userGroups: this.userGroups,
+        orderId: this.orderId
     };
 };
 
@@ -117,6 +121,7 @@ MenuItem.prototype.get = function(roles, userGroups, path) {
         name: this.name || null,
         icon: this.icon || null,
         submenus: this.submenus.map(get_get.bind(null, roles, userGroups)).filter(remove_nulls),
+        orderId: this.orderId || null
     });
 };
 
