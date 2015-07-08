@@ -1,0 +1,50 @@
+{
+  "name": "global-eventemitter",
+  "description": "Just a global instance for Node.js EventEmitter",
+  "version": "1.0.0",
+  "author": {
+    "name": "Artyom Trityak",
+    "email": "art.trityak@gmail.com"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/artyomtrityak/global-eventemitter"
+  },
+  "homepage": "https://github.com/artyomtrityak/global-eventemitter",
+  "keywords": [
+    "eventemitter",
+    "global"
+  ],
+  "engines": {
+    "node": ">= 0.10.0"
+  },
+  "files": [
+    "LICENSE",
+    "Readme.md",
+    "index.js"
+  ],
+  "bugs": {
+    "url": "https://github.com/artyomtrityak/global-eventemitter/issues"
+  },
+  "_id": "global-eventemitter@1.0.0",
+  "_shasum": "ac59ee4399340779c3a25535a4012d993c737a34",
+  "_from": "global-eventemitter@*",
+  "_npmVersion": "1.4.10",
+  "_npmUser": {
+    "name": "artyomtrityak",
+    "email": "art.trityak@gmail.com"
+  },
+  "maintainers": [
+    {
+      "name": "artyomtrityak",
+      "email": "art.trityak@gmail.com"
+    }
+  ],
+  "dist": {
+    "shasum": "ac59ee4399340779c3a25535a4012d993c737a34",
+    "tarball": "http://registry.npmjs.org/global-eventemitter/-/global-eventemitter-1.0.0.tgz"
+  },
+  "directories": {},
+  "_resolved": "https://registry.npmjs.org/global-eventemitter/-/global-eventemitter-1.0.0.tgz"
+}
