@@ -48,6 +48,12 @@ function outdated (args, silent, cb) {
   outdated_(args, dir, {}, 0, function (er, list) {
     if (!list) list = []
     if (er || silent || list.length === 0) return cb(er, list)
+    list.sort(function(a, b) {
+      var aa = a[1].toLowerCase()
+        , bb = b[1].toLowerCase()
+      return aa === bb ? 0
+           : aa < bb ? -1 : 1
+    })
     if (npm.config.get("json")) {
       console.log(makeJSON(list))
     } else if (npm.config.get("parseable")) {
@@ -246,6 +252,7 @@ function outdated_ (args, dir, parentHas, depth, cb) {
       has = Object.create(parentHas)
       pvs.forEach(function (pv) {
         has[pv[0]] = {
+          link: data.dependencies[pv[0]].link,
           version: pv[1],
           from: pv[2]
         }
@@ -305,6 +312,9 @@ function shouldUpdate (args, dir, dep, has, req, depth, cb, type) {
   if (parsed.type === "git" || (parsed.hosted && parsed.hosted.type === "github")) {
     return doIt("git", "git")
   }
+  if (curr && curr.link) {
+    return doIt("linked", "linked")
+  }
 
   // search for the latest package
   mapToRegistry(dep, npm.config, function (er, uri, auth) {
@@ -338,7 +348,7 @@ function shouldUpdate (args, dir, dep, has, req, depth, cb, type) {
 
   function updateDeps (er, d) {
     if (er) {
-      if (parsed.type !== 'local') return cb()
+      if (parsed.type !== 'local') return cb(er)
       return updateLocalDeps()
     }
 

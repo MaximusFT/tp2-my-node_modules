@@ -11,7 +11,8 @@ var cbCalled = false
   , exitCode = 0
   , rollbacks = npm.rollbacks
   , chain = require("slide").chain
-  , writeStream = require("fs-write-stream-atomic")
+  , writeStreamAtomic = require("fs-write-stream-atomic")
+  , nameValidator = require("validate-npm-package-name")
 
 
 process.on("exit", function (code) {
@@ -186,8 +187,10 @@ function errorHandler (er) {
               ,"not with npm itself."
               ,"Tell the author that this fails on your system:"
               ,"    "+er.script
-              ,"You can get their info via:"
-              ,"    npm owner ls "+er.pkgname
+              ,'You can get information on how to open an issue for this project with:'
+              ,'    npm bugs ' + er.pkgname
+              ,'Or if that isn\'t available, you can get their info via:',
+              ,'    npm owner ls ' + er.pkgname
               ,"There is likely additional logging output above."
               ].join("\n"))
     break
@@ -216,8 +219,21 @@ function errorHandler (er) {
   case "E404":
     var msg = [er.message]
     if (er.pkgid && er.pkgid !== "-") {
-      msg.push("", "'"+er.pkgid+"' is not in the npm registry."
-              ,"You should bug the author to publish it (or use the name yourself!)")
+      msg.push("", "'" + er.pkgid + "' is not in the npm registry.")
+
+      var valResult = nameValidator(er.pkgid)
+
+      if (valResult.validForNewPackages) {
+        msg.push("You should bug the author to publish it (or use the name yourself!)")
+      } else {
+        msg.push("Your package name is not valid, because", "")
+
+        var errorsArray = (valResult.errors || []).concat(valResult.warnings || [])
+        errorsArray.forEach(function(item, idx) {
+          msg.push(" " + (idx + 1) + ". " + item)
+        })
+      }
+
       if (er.parent) {
         msg.push("It was specified as a dependency of '"+er.parent+"'")
       }
@@ -352,6 +368,14 @@ function errorHandler (er) {
               ].join("\n"))
     break
 
+  case "EISDIR":
+    log.error("eisdir", [er.message
+              ,"This is most likely not a problem with npm itself"
+              ,"and is related to npm not being able to find a package.json in"
+              ,"a package you are trying to install."
+              ].join("\n"))
+    break
+
   default:
     log.error("", er.message || er)
     log.error("", ["", "If you need help, you may report this error at:"
@@ -369,7 +393,7 @@ function writeLogFile (cb) {
   writingLogFile = true
   wroteLogFile = true
 
-  var fstr = writeStream("npm-debug.log")
+  var fstr = writeStreamAtomic("npm-debug.log")
     , os = require("os")
     , out = ""
 

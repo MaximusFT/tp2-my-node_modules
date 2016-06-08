@@ -17,6 +17,18 @@ var path = require("path")
 module.exports = addNamed
 
 function getOnceFromRegistry (name, from, next, done) {
+  function fixName(err, data, json, resp) {
+    // this is only necessary until npm/npm-registry-client#80 is fixed
+    if (err && err.pkgid && err.pkgid !== name) {
+      err.message = err.message.replace(
+        new RegExp(': ' + err.pkgid.replace(/(\W)/g, '\\$1') + '$'),
+        ': ' + name
+      )
+      err.pkgid = name
+    }
+    next(err, data, json, resp)
+  }
+
   mapToRegistry(name, npm.config, function (er, uri, auth) {
     if (er) return done(er)
 
@@ -25,7 +37,7 @@ function getOnceFromRegistry (name, from, next, done) {
     if (!next) return log.verbose(from, key, "already in flight; waiting")
     else log.verbose(from, key, "not in flight; fetching")
 
-    npm.registry.get(uri, { auth : auth }, next)
+    npm.registry.get(uri, { auth : auth }, fixName)
   })
 }
 
@@ -181,6 +193,12 @@ function addNameVersion (name, v, data, cb) {
         var rp = url.parse(ruri)
         if (tb.hostname === rp.hostname && tb.protocol !== rp.protocol) {
           tb.protocol = rp.protocol
+          // If a different port is associated with the other protocol
+          // we need to update that as well
+          if (rp.port !== tb.port) {
+            tb.port = rp.port
+            delete tb.host
+          }
           delete tb.href
         }
         tb = url.format(tb)
@@ -238,7 +256,11 @@ function addNameRange (name, range, data, cb) {
     var versions = Object.keys(data.versions || {})
     var ms = semver.maxSatisfying(versions, range, true)
     if (!ms) {
-      return cb(installTargetsError(range, data))
+      if (range === "*" && versions.length) {
+        return addNameTag(name, "latest", data, cb)
+      } else {
+        return cb(installTargetsError(range, data))
+      }
     }
 
     // if we don't have a registry connection, try to see if

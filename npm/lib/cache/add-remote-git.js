@@ -15,7 +15,7 @@ var npa = require('npm-package-arg')
 var realizePackageSpecifier = require('realize-package-specifier')
 
 var addLocal = require('./add-local.js')
-var getCacheStat = require('./get-stat.js')
+var correctMkdir = require('../utils/correct-mkdir.js')
 var git = require('../utils/git.js')
 var npm = require('../npm.js')
 var rm = require('../utils/gently-rm.js')
@@ -27,6 +27,7 @@ var VALID_VARIABLES = [
   'GIT_ASKPASS',
   'GIT_PROXY_COMMAND',
   'GIT_SSH',
+  'GIT_SSH_COMMAND',
   'GIT_SSL_CAINFO',
   'GIT_SSL_NO_VERIFY'
 ]
@@ -115,7 +116,7 @@ function tryClone (from, combinedURL, silent, cb) {
 
   // ensure that similarly-named remotes don't collide
   var repoID = cloneURL.replace(/[^a-zA-Z0-9]+/g, '-') + '-' +
-    crypto.createHash('sha1').update(cloneURL).digest('hex').slice(0, 8)
+    crypto.createHash('sha1').update(combinedURL).digest('hex').slice(0, 8)
   var cachedRemote = path.join(remotes, repoID)
 
   cb = inflight(repoID, cb)
@@ -267,7 +268,7 @@ function updateRemote (from, cloneURL, treeish, cachedRemote, cb) {
 }
 
 // branches and tags are both symbolic labels that can be attached to different
-// commits, so resolve the commitish to the current actual treeish the label
+// commits, so resolve the commit-ish to the current actual treeish the label
 // corresponds to
 //
 // important for shrinkwrap
@@ -379,7 +380,7 @@ function checkoutTreeish (from, resolvedURL, resolvedTreeish, tmpdir, cb) {
 }
 
 function getGitDir (cb) {
-  getCacheStat(function (er, stats) {
+  correctMkdir(remotes, function (er, stats) {
     if (er) return cb(er)
 
     // We don't need global templates when cloning. Use an empty directory for
@@ -390,11 +391,7 @@ function getGitDir (cb) {
       // Ensure that both the template and remotes directories have the correct
       // permissions.
       fs.chown(templates, stats.uid, stats.gid, function (er) {
-        if (er) return cb(er)
-
-        fs.chown(remotes, stats.uid, stats.gid, function (er) {
-          cb(er, stats)
-        })
+        cb(er, stats)
       })
     })
   })
@@ -428,25 +425,19 @@ function getResolved (uri, treeish) {
 
   var parsed = url.parse(uri)
 
-  // non-hosted SSH strings that are not URLs (git@whatever.com:foo.git) are
-  // no bueno
-  // https://github.com/npm/npm/issues/7961
-  if (!parsed.protocol) return
-
-  parsed.hash = treeish
-  if (!/^git[+:]/.test(parsed.protocol)) {
-    parsed.protocol = 'git+' + parsed.protocol
+  // Checks for known protocols:
+  // http:, https:, ssh:, and git:, with optional git+ prefix.
+  if (!parsed.protocol ||
+      !parsed.protocol.match(/^(((git\+)?(https?|ssh))|git|file):$/)) {
+    uri = 'git+ssh://' + uri
   }
 
-  // node incorrectly sticks a / at the start of the path We know that the host
-  // won't change, so split and detect this
-  // https://github.com/npm/npm/issues/3224
-  var spo = uri.split(parsed.host)
-  var spr = url.format(parsed).split(parsed.host)
-  if (spo[1] && spo[1].charAt(0) === ':' && spr[1] && spr[1].charAt(0) === '/') {
-    spr[1] = spr[1].slice(1)
+  if (!/^git[+:]/.test(uri)) {
+    uri = 'git+' + uri
   }
-  return spr.join(parsed.host)
+
+  // Not all URIs are actually URIs, so use regex for the treeish.
+  return uri.replace(/(?:#.*)?$/, '#' + treeish)
 }
 
 // similar to chmodr except it add permissions rather than overwriting them
